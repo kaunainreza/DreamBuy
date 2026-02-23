@@ -47,17 +47,29 @@ fun ProductDetailScreen(
     val cartItems by cartVm.items.collectAsState()
     val inCartQty = cartItems.find { it.productId == productId }?.quantity ?: 0
 
-    // Quantity state for cart selector - default to 1 so "Add 1" is obvious
+    // Quantity state for cart selector - default to 1 so auto-add is obvious
     val qtyState = remember { mutableStateOf(1) }
 
-    // ensure selector resets each time this product screen is (re)entered
-    LaunchedEffect(productId) {
-        qtyState.value = 0
-    }
-
-    // Confirmation message state
+    // Confirmation message state (moved above LaunchedEffect so we can set it there)
     var showConfirm by remember { mutableStateOf(false) }
     var confirmText by remember { mutableStateOf("") }
+
+    // ensure selector resets each time this product screen is (re)entered
+    // and auto-add the product to the cart when the screen opens (only if not already in cart)
+    LaunchedEffect(productId) {
+        // read current cart snapshot and initialize selector based on it
+        val existing = cartItems.find { it.productId == productId }
+        if (existing != null) {
+            qtyState.value = existing.quantity
+        } else {
+            qtyState.value = 0
+            // only add to cart once when the screen is first opened for this product
+            val cartItem = CartItem.fromProduct(product, qtyState.value)
+            cartVm.addToCart(cartItem)
+            confirmText = "Added ${qtyState.value} to cart"
+            showConfirm = true
+        }
+    }
 
     Column(modifier = Modifier
         .fillMaxSize()) {
@@ -108,7 +120,20 @@ fun ProductDetailScreen(
             // Quantity selector row
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Button(
-                    onClick = { if (qtyState.value > 0) qtyState.value = qtyState.value - 1 },
+                    onClick = {
+                        val newQty = (qtyState.value - 1).coerceAtLeast(0)
+                        qtyState.value = newQty
+                        // if item exists update/remove, otherwise if newQty>0 add
+                        val exists = cartItems.any { it.productId == productId }
+                        if (exists) {
+                            cartVm.updateQuantity(productId, newQty)
+                            confirmText = if (newQty > 0) "Updated quantity to $newQty" else "Removed from cart"
+                        } else if (newQty > 0) {
+                            cartVm.addToCart(CartItem.fromProduct(product, newQty))
+                            confirmText = "Added $newQty to cart"
+                        }
+                        showConfirm = true
+                    },
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text("-")
@@ -121,28 +146,25 @@ fun ProductDetailScreen(
                 )
 
                 Button(
-                    onClick = { if (qtyState.value < 99) qtyState.value = qtyState.value + 1 },
+                    onClick = {
+                        val newQty = (qtyState.value + 1).coerceAtMost(99)
+                        qtyState.value = newQty
+                        val exists = cartItems.any { it.productId == productId }
+                        if (exists) {
+                            cartVm.updateQuantity(productId, newQty)
+                            confirmText = "Updated quantity to $newQty"
+                        } else {
+                            cartVm.addToCart(CartItem.fromProduct(product, newQty))
+                            confirmText = "Added $newQty to cart"
+                        }
+                        showConfirm = true
+                    },
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text("+")
                 }
 
-                Spacer(modifier = Modifier.width(24.dp))
-
-                // Add to Cart action (adds the selected amount)
-                Button(
-                    onClick = {
-                        val cartItem = CartItem.fromProduct(product, qtyState.value)
-                        cartVm.addToCart(cartItem)
-                        confirmText = "Added ${qtyState.value} to cart"
-                        // reset the selector to 1 so subsequent adds are intentional
-                        qtyState.value = 1
-                        showConfirm = true
-                    },
-                    enabled = qtyState.value > 0
-                ) {
-                    Text("Add to Cart")
-                }
+                // Removed explicit "Add to Cart" button — product is added automatically when this screen opens
             }
 
             if (showConfirm) {
