@@ -17,6 +17,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.dreamdeal.ui.theme.RodTestAppTheme
+import com.example.dreamdeal.ui.theme.data.CartItem
 import com.example.dreamdeal.ui.theme.data.Product
 import com.example.dreamdeal.ui.theme.viewmodel.CartViewModel
 
@@ -32,15 +33,23 @@ fun HomeScreen(
     val products by vm.products.collectAsState()
     val loading by vm.loading.collectAsState()
     val error by vm.error.collectAsState()
+    val cartItems by cartVm.items.collectAsState()
 
     HomeScreenContent(
         products = products,
         loading = loading,
         error = error,
+        cartItems = cartItems,
         onSearch = { vm.search(it) },
         onProductClick = onProductClick,
         onOpenCart = onOpenCart,
-        cartVm = cartVm,
+        onAddToCart = { product -> cartVm.addToCart(CartItem.fromProduct(product, 1)) },
+        onRemoveFromCart = { productId -> 
+            val item = cartItems.find { it.productId == productId }
+            if (item != null) {
+                cartVm.updateQuantity(productId, item.quantity - 1)
+            }
+        },
         modifier = modifier
     )
 }
@@ -50,10 +59,12 @@ fun HomeScreenContent(
     products: List<Product>,
     loading: Boolean,
     error: String?,
+    cartItems: List<CartItem>,
     onSearch: (String) -> Unit,
     onProductClick: (Int) -> Unit,
     onOpenCart: () -> Unit,
-    cartVm: CartViewModel,
+    onAddToCart: (Product) -> Unit,
+    onRemoveFromCart: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var query by remember { mutableStateOf("") }
@@ -82,7 +93,8 @@ fun HomeScreenContent(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            CartIconWithPreview(onOpenCart = onOpenCart, cartVm = cartVm)
+            val cartCount = cartItems.count { it.quantity > 0 }
+            CartIconWithPreview(count = cartCount, onOpenCart = onOpenCart)
         }
 
         when {
@@ -101,7 +113,16 @@ fun HomeScreenContent(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(products) { product ->
-                    ProductCard(product) { onProductClick(product.id) }
+                    val cartItem = cartItems.find { it.productId == product.id }
+                    val quantity = cartItem?.quantity ?: 0
+                    
+                    ProductCard(
+                        product = product,
+                        quantity = quantity,
+                        onAddToCart = { onAddToCart(product) },
+                        onRemoveFromCart = { onRemoveFromCart(product.id) },
+                        onClick = { onProductClick(product.id) }
+                    )
                 }
             }
         }
@@ -121,10 +142,12 @@ fun HomeScreenPreview() {
             ),
             loading = false,
             error = null,
+            cartItems = emptyList(),
             onSearch = {},
             onProductClick = {},
             onOpenCart = {},
-            cartVm = viewModel(),
+            onAddToCart = {},
+            onRemoveFromCart = {},
             modifier = Modifier
         )
     }
