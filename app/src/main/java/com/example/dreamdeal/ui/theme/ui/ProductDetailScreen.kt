@@ -22,6 +22,7 @@ import com.example.dreamdeal.ui.theme.data.Product
 import com.example.dreamdeal.ui.theme.viewmodel.CartViewModel
 import com.example.dreamdeal.ui.theme.viewmodel.ShopViewModel
 import androidx.compose.ui.tooling.preview.Preview
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Suppress("DEPRECATION")
@@ -172,7 +173,7 @@ fun ProductDetailScreen(
                 Text(confirmText, style = MaterialTheme.typography.bodyMedium)
                 // auto-hide after a short delay
                 LaunchedEffect(confirmText) {
-                    kotlinx.coroutines.delay(1500)
+                    delay(1500)
                     showConfirm = false
                 }
             }
@@ -180,13 +181,3 @@ fun ProductDetailScreen(
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun ProductDetailScreenPreview() {
-    // Create simple VMs for preview. These are lightweight and safe to instantiate in previews.
-    val shopVm = ShopViewModel()
-    val cartVm = CartViewModel()
-
-    // Use a known sample product id (ShopViewModel provides sampleProducts with ids 1..3)
-    ProductDetailScreen(productId = 1, vm = shopVm, cartVm = cartVm, onBack = {}, onOpenCart = {})
-}

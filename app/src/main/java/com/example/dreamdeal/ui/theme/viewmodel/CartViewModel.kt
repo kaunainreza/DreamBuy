@@ -1,13 +1,31 @@
 package com.example.dreamdeal.ui.theme.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.dreamdeal.ui.theme.data.CartItem
+import com.example.dreamdeal.ui.theme.data.CartPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
-class CartViewModel : ViewModel() {
+class CartViewModel(private val cartPreferences: CartPreferences) : ViewModel() {
     private val _items = MutableStateFlow<List<CartItem>>(emptyList())
     val items: StateFlow<List<CartItem>> = _items
+
+    init {
+        viewModelScope.launch {
+            cartPreferences.cartItems.collectLatest { savedItems ->
+                _items.value = savedItems
+            }
+        }
+    }
+
+    private fun saveItems(items: List<CartItem>) {
+        viewModelScope.launch {
+            cartPreferences.saveCartItems(items)
+        }
+    }
 
     fun addToCart(item: CartItem) {
         val existing = _items.value.toMutableList()
@@ -18,7 +36,7 @@ class CartViewModel : ViewModel() {
         } else {
             existing.add(item)
         }
-        _items.value = existing
+        saveItems(existing)
     }
 
     fun updateQuantity(productId: Int, quantity: Int) {
@@ -31,7 +49,7 @@ class CartViewModel : ViewModel() {
                 val old = existing[idx]
                 existing[idx] = old.copy(quantity = quantity)
             }
-            _items.value = existing
+            saveItems(existing)
         }
     }
 
@@ -40,11 +58,11 @@ class CartViewModel : ViewModel() {
         val idx = existing.indexOfFirst { it.productId == productId }
         if (idx >= 0) {
             existing.removeAt(idx)
-            _items.value = existing
+            saveItems(existing)
         }
     }
 
     fun clearCart() {
-        _items.value = emptyList()
+        saveItems(emptyList())
     }
 }

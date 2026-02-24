@@ -12,12 +12,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.dreamdeal.ui.theme.RodTestAppTheme
+import com.example.dreamdeal.ui.theme.data.CartPreferences
 import com.example.dreamdeal.ui.theme.ui.CartScreen
 import com.example.dreamdeal.ui.theme.ui.HomeScreen
 import com.example.dreamdeal.ui.theme.ui.ProductDetailScreen
@@ -37,12 +41,25 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+class CartViewModelFactory(private val context: android.content.Context) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(CartViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return CartViewModel(CartPreferences(context)) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
+
 @Composable
 fun AppNav(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
+    val context = LocalContext.current
 
     // activity-scoped CartViewModel so all screens share the same cart state
-    val cartVm: CartViewModel = viewModel()
+    val cartVm: CartViewModel = viewModel(
+        factory = CartViewModelFactory(context.applicationContext)
+    )
 
     NavHost(navController = navController, startDestination = "home", modifier = modifier) {
         composable("home") {
