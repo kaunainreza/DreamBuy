@@ -94,7 +94,7 @@ fun HomeScreenContent(
             Spacer(modifier = Modifier.width(8.dp))
 
             val cartCount = cartItems.count { it.quantity > 0 }
-            CartIconWithPreview(count = cartCount, onOpenCart = onOpenCart)
+            CartIcon(count = cartCount, onOpenCart = onOpenCart)
         }
 
         when {
